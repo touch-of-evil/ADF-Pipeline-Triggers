@@ -41,6 +41,11 @@ namespace AdfPipelineTriggers
             // Authenticate and create a data factory management client
             DataFactoryManagementClient client = await GetDataFactoryManagementClient();
 
+            return await RunAdHocPipeline(client, inputRequest);
+        }
+
+        private async Task<string> RunAdHocPipeline(DataFactoryManagementClient client, ManualTriggerRequest inputRequest)
+        {
             AzureOperationResponse<CreateRunResponse> runResponse = await client.Pipelines.
                 CreateRunWithHttpMessagesAsync(
                 inputRequest.ResourceGroup,
