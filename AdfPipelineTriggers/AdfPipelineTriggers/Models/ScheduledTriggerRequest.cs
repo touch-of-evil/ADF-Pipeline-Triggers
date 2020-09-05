@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AdfPipelineTrigger.Models
+namespace AdfPipelineTriggers.Models
 {
-    public class PipelineTriggerRequest : PipelineRequestBase
+    public class ScheduledTriggerRequest : PipelineRequestBase
     {
         public string TriggerName { get; set; }
 
@@ -23,7 +23,7 @@ namespace AdfPipelineTrigger.Models
 
         internal string GetFrequency()
         {
-            switch(Frequency.ToLower())
+            switch (Frequency.ToLower())
             {
                 case Constants.Schedule.Minute:
                     return RecurrenceFrequency.Minute;
@@ -46,9 +46,9 @@ namespace AdfPipelineTrigger.Models
         {
             get
             {
-                if (!string.IsNullOrEmpty(SubscriptionId) && !string.IsNullOrEmpty(DataFactoryName) &&
+                if (!string.IsNullOrEmpty(DataFactoryName) && !string.IsNullOrEmpty(Frequency) &&
                     !string.IsNullOrEmpty(ResourceGroup) && !string.IsNullOrEmpty(TriggerName) &&
-                    !string.IsNullOrEmpty(Frequency) && FrequencyInterval.HasValue && FrequencyInterval.Value > 0)
+                    FrequencyInterval.HasValue && FrequencyInterval.Value > 0)
                 {
                     string recurrenceFrequency = GetFrequency();
                     if (string.IsNullOrEmpty(recurrenceFrequency))

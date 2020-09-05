@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace AdfPipelineTrigger.Models
+namespace AdfPipelineTriggers.Models
 {
     public class ScheduleRecurrence
     {

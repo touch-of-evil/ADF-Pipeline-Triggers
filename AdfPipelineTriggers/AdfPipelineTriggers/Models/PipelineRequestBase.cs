@@ -1,10 +1,8 @@
 ﻿
-namespace AdfPipelineTrigger.Models
+namespace AdfPipelineTriggers.Models
 {
     public abstract class PipelineRequestBase
     {
-        public string SubscriptionId { get; set; }
-
         public string ResourceGroup { get; set; }
 
         public string DataFactoryName { get; set; }

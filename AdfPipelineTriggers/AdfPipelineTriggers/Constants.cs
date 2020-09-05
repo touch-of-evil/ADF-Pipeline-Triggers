@@ -1,7 +1,10 @@
-﻿
-namespace AdfPipelineTrigger
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace AdfPipelineTriggers
 {
-    public class Constants
+    public static class Constants
     {
         public static class Schedule
         {

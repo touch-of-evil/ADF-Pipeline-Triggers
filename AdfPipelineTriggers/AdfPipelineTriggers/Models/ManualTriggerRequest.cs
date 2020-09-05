@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace AdfPipelineTrigger.Models
+namespace AdfPipelineTriggers.Models
 {
-    public class RunRequest : PipelineRequestBase
+    public class ManualTriggerRequest : PipelineRequestBase
     {
         public string PipelineName { get; set; }
         public Dictionary<string, object> PipelineParams { get; set; }
@@ -11,7 +11,7 @@ namespace AdfPipelineTrigger.Models
         {
             get
             {
-                return !string.IsNullOrEmpty(SubscriptionId) && !string.IsNullOrEmpty(ResourceGroup) &&
+                return !string.IsNullOrEmpty(ResourceGroup) &&
                 !string.IsNullOrEmpty(DataFactoryName) && !string.IsNullOrEmpty(PipelineName);
             }
         }

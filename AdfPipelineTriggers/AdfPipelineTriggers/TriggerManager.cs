@@ -1,4 +1,4 @@
-﻿using AdfPipelineTrigger.Models;
+﻿using AdfPipelineTriggers.Models;
 using Microsoft.Azure.Management.DataFactory;
 using Microsoft.Azure.Management.DataFactory.Models;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
@@ -8,44 +8,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace AdfPipelineTrigger
+namespace AdfPipelineTriggers
 {
-    public class Runner
+    public class TriggerManager
     {
-        public async Task<string> CreateRunPipeline(RunRequest inputRequest)
+        internal async Task ScheduleTrigger(ScheduledTriggerRequest request)
         {
-            // Authenticate and create a data factory management client
-            DataFactoryManagementClient client = await GetDataFactoryClient(inputRequest.SubscriptionId);
-
-            AzureOperationResponse<CreateRunResponse> runResponse = await client.Pipelines.
-                CreateRunWithHttpMessagesAsync(
-                inputRequest.ResourceGroup,
-                inputRequest.DataFactoryName,
-                inputRequest.PipelineName,
-                parameters: inputRequest.PipelineParams
-            );
-
-            return runResponse.Body.RunId;
-        }
-
-        private async Task<DataFactoryManagementClient> GetDataFactoryClient(string subscriptionId)
-        {
-            AuthenticationContext context = new AuthenticationContext(Environment.GetEnvironmentVariable("Azure_ContextUrl") + 
-                Environment.GetEnvironmentVariable("Azure_TenantId"));
-            ClientCredential cc = new ClientCredential(Environment.GetEnvironmentVariable("ADF-ApplicationId"), Environment.GetEnvironmentVariable("ADF-ApplicationSecret"));
-            AuthenticationResult result = await context.AcquireTokenAsync(Environment.GetEnvironmentVariable("Azure_ManagementUrl"), cc);
-            ServiceClientCredentials cred = new TokenCredentials(result.AccessToken);
-            DataFactoryManagementClient client = new DataFactoryManagementClient(cred)
-            {
-                SubscriptionId = subscriptionId
-            };
-            return client;
-        }
-
-        public async Task CreatePipelineTrigger(PipelineTriggerRequest request)
-        {
-            // Authenticate and create a data factory management client
-            DataFactoryManagementClient client = await GetDataFactoryClient(request.SubscriptionId);
+            DataFactoryManagementClient client = await GetDataFactoryManagementClient();
 
             ScheduleTrigger scheduleTrigger = GetScheduledTrigger(request);
 
@@ -67,16 +36,46 @@ namespace AdfPipelineTrigger
             }
         }
 
-        public async Task DeletePipelineTrigger(DeleteRequest inputRequest)
+        internal async Task<string> CreateRunPipeline(ManualTriggerRequest inputRequest)
         {
-            DataFactoryManagementClient client = await GetDataFactoryClient(inputRequest.SubscriptionId);
+            // Authenticate and create a data factory management client
+            DataFactoryManagementClient client = await GetDataFactoryManagementClient();
+
+            AzureOperationResponse<CreateRunResponse> runResponse = await client.Pipelines.
+                CreateRunWithHttpMessagesAsync(
+                inputRequest.ResourceGroup,
+                inputRequest.DataFactoryName,
+                inputRequest.PipelineName,
+                parameters: inputRequest.PipelineParams
+            );
+
+            return runResponse.Body.RunId;
+        }
+
+        internal async Task DeletePipelineTrigger(DeleteTriggerRequest inputRequest)
+        {
+            DataFactoryManagementClient client = await GetDataFactoryManagementClient();
 
             await client.Triggers.StopAsync(inputRequest.ResourceGroup, inputRequest.DataFactoryName, inputRequest.TriggerName);
 
             await client.Triggers.DeleteAsync(inputRequest.ResourceGroup, inputRequest.DataFactoryName, inputRequest.TriggerName);
         }
 
-        private ScheduleTrigger GetScheduledTrigger(PipelineTriggerRequest request)
+        private async Task<DataFactoryManagementClient> GetDataFactoryManagementClient()
+        {
+            AuthenticationContext context = new AuthenticationContext(Environment.GetEnvironmentVariable("Azure_ContextUrl") +
+                Environment.GetEnvironmentVariable("Azure_TenantId"));
+            ClientCredential cc = new ClientCredential(Environment.GetEnvironmentVariable("ADF_ApplicationId"), Environment.GetEnvironmentVariable("ADF_ApplicationSecret"));
+            AuthenticationResult result = await context.AcquireTokenAsync(Environment.GetEnvironmentVariable("Azure_ManagementUrl"), cc);
+            ServiceClientCredentials cred = new TokenCredentials(result.AccessToken);
+            DataFactoryManagementClient client = new DataFactoryManagementClient(cred)
+            {
+                SubscriptionId = Environment.GetEnvironmentVariable("Azure_SubscriptionId")
+            };
+            return client;
+        }
+
+        private ScheduleTrigger GetScheduledTrigger(ScheduledTriggerRequest request)
         {
             ScheduleTrigger trigger = new ScheduleTrigger()
             {
@@ -86,7 +85,25 @@ namespace AdfPipelineTrigger
             return trigger;
         }
 
-        private ScheduleTriggerRecurrence GetScheduledTriggerRecurrence(PipelineTriggerRequest request)
+        private List<TriggerPipelineReference> GetPipelineForScheduleTrigger(List<Pipeline> pipelines)
+        {
+            List<TriggerPipelineReference> pipelineReferences = new List<TriggerPipelineReference>();
+            foreach (Pipeline pipeline in pipelines)
+            {
+                TriggerPipelineReference reference = new TriggerPipelineReference()
+                {
+                    PipelineReference = new PipelineReference(pipeline.Name)
+                };
+                if (pipeline.PipelineParams != null && pipeline.PipelineParams.Count > 0)
+                {
+                    reference.Parameters = pipeline.PipelineParams;
+                }
+                pipelineReferences.Add(reference);
+            }
+            return pipelineReferences;
+        }
+
+        private ScheduleTriggerRecurrence GetScheduledTriggerRecurrence(ScheduledTriggerRequest request)
         {
             ScheduleTriggerRecurrence recurrence = new ScheduleTriggerRecurrence()
             {
@@ -98,7 +115,7 @@ namespace AdfPipelineTrigger
             {
                 recurrence.Schedule = new RecurrenceSchedule();
                 if (request.Frequency.Equals(Constants.Schedule.Month, StringComparison.InvariantCultureIgnoreCase))
-                {                    
+                {
                     if (request.Schedule.ScheduleRecurrences != null && request.Schedule.ScheduleRecurrences.Count > 0)
                     {
                         recurrence.Schedule.MonthlyOccurrences = GetMonthlyScheduleRecurrence(request.Schedule.ScheduleRecurrences);
@@ -107,7 +124,8 @@ namespace AdfPipelineTrigger
                     {
                         recurrence.Schedule.MonthDays = request.Schedule.MonthDays;
                     }
-                } else if (request.Frequency.Equals(Constants.Schedule.Week, StringComparison.InvariantCultureIgnoreCase))
+                }
+                else if (request.Frequency.Equals(Constants.Schedule.Week, StringComparison.InvariantCultureIgnoreCase))
                 {
                     recurrence.Schedule.WeekDays = GetScheduleWeekDays(request.Schedule.WeekDays);
                 }
@@ -125,24 +143,10 @@ namespace AdfPipelineTrigger
             return recurrence;
         }
 
-        private List<DaysOfWeek?> GetScheduleWeekDays(List<int?> inputList)
-        {
-            List<DaysOfWeek?> weekdays = new List<DaysOfWeek?>();
-            foreach(int? day in inputList)
-            {
-                if (day.HasValue)
-                {
-                    DaysOfWeek daysOfWeek = Enum.Parse<DaysOfWeek>(day.ToString());
-                    weekdays.Add(daysOfWeek);
-                }
-            }
-            return weekdays;
-        }
-
         private List<RecurrenceScheduleOccurrence> GetMonthlyScheduleRecurrence(List<ScheduleRecurrence> occurrences)
         {
             List<RecurrenceScheduleOccurrence> scheduleOccurrences = new List<RecurrenceScheduleOccurrence>();
-            foreach(ScheduleRecurrence occurrence in occurrences)
+            foreach (ScheduleRecurrence occurrence in occurrences)
             {
                 RecurrenceScheduleOccurrence scheduleOccurrence = new RecurrenceScheduleOccurrence();
                 if (occurrence.Day.HasValue)
@@ -155,22 +159,18 @@ namespace AdfPipelineTrigger
             return scheduleOccurrences;
         }
 
-        private List<TriggerPipelineReference> GetPipelineForScheduleTrigger(List<Pipeline> pipelines)
+        private List<DaysOfWeek?> GetScheduleWeekDays(List<int?> inputList)
         {
-            List<TriggerPipelineReference> pipelineReferences = new List<TriggerPipelineReference>();
-            foreach(Pipeline pipeline in pipelines)
+            List<DaysOfWeek?> weekdays = new List<DaysOfWeek?>();
+            foreach (int? day in inputList)
             {
-                TriggerPipelineReference reference = new TriggerPipelineReference()
+                if (day.HasValue)
                 {
-                    PipelineReference = new PipelineReference(pipeline.Name)
-                };
-                if (pipeline.PipelineParams != null && pipeline.PipelineParams.Count > 0)
-                {
-                    reference.Parameters = pipeline.PipelineParams;
+                    DaysOfWeek daysOfWeek = Enum.Parse<DaysOfWeek>(day.ToString());
+                    weekdays.Add(daysOfWeek);
                 }
-                pipelineReferences.Add(reference);
             }
-            return pipelineReferences;
+            return weekdays;
         }
     }
 }

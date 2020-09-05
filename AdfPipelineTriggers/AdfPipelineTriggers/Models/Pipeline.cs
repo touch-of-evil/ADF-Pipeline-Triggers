@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace AdfPipelineTrigger.Models
+namespace AdfPipelineTriggers.Models
 {
     public class Pipeline
     {
