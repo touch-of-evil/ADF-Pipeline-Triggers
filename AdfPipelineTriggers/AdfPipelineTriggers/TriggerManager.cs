@@ -27,8 +27,11 @@ namespace AdfPipelineTriggers
                 };
                 await client.Triggers.CreateOrUpdateAsync(request.ResourceGroup, request.DataFactoryName, request.TriggerName, triggerResource);
 
-                // Activate the trigger
-                client.Triggers.Start(request.ResourceGroup, request.DataFactoryName, request.TriggerName);
+                if (request.Activate)
+                {
+                    // Activate the trigger
+                    client.Triggers.Start(request.ResourceGroup, request.DataFactoryName, request.TriggerName);
+                }
             }
             else
             {

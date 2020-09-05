@@ -17,6 +17,8 @@ namespace AdfPipelineTriggers.Models
 
         public int? FrequencyInterval { get; set; }
 
+        public bool Activate { get; set; }
+
         public Schedule Schedule { get; set; }
 
         public List<Pipeline> Pipelines { get; set; }
