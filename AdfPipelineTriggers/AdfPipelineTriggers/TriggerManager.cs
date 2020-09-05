@@ -119,36 +119,43 @@ namespace AdfPipelineTriggers
             };
             recurrence.StartTime = request.StartDate.HasValue ? request.StartDate.Value.ToUniversalTime() : request.StartDate;
             recurrence.EndTime = request.EndDate.HasValue ? request.EndDate.Value.ToUniversalTime() : request.EndDate;
-            if (request.Schedule != null)
-            {
-                recurrence.Schedule = new RecurrenceSchedule();
-                if (request.Frequency.Equals(Constants.Schedule.Month, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    if (request.Schedule.ScheduleRecurrences != null && request.Schedule.ScheduleRecurrences.Count > 0)
-                    {
-                        recurrence.Schedule.MonthlyOccurrences = GetMonthlyScheduleRecurrence(request.Schedule.ScheduleRecurrences);
-                    }
-                    else
-                    {
-                        recurrence.Schedule.MonthDays = request.Schedule.MonthDays;
-                    }
-                }
-                else if (request.Frequency.Equals(Constants.Schedule.Week, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    recurrence.Schedule.WeekDays = GetScheduleWeekDays(request.Schedule.WeekDays);
-                }
-                if (request.Schedule.Hours != null)
-                {
-                    recurrence.Schedule.Hours = request.Schedule.Hours;
-                }
-                if (request.Schedule.Minutes != null)
-                {
-                    recurrence.Schedule.Minutes = request.Schedule.Minutes;
-                }
-            }
             recurrence.Frequency = request.GetFrequency();
             recurrence.Interval = request.FrequencyInterval;
+            if (request.Schedule != null)
+            {
+                recurrence.Schedule = GetRecurrenceSchedule(request);                    
+            }
             return recurrence;
+        }
+
+        private RecurrenceSchedule GetRecurrenceSchedule(ScheduledTriggerRequest request)
+        {
+            RecurrenceSchedule schedule = new RecurrenceSchedule();
+            if (request.Schedule.Hours != null)
+            {
+                schedule.Hours = request.Schedule.Hours;
+            }
+            if (request.Schedule.Minutes != null)
+            {
+                schedule.Minutes = request.Schedule.Minutes;
+            }
+            if (request.Frequency.Equals(Constants.Schedule.Month, StringComparison.InvariantCultureIgnoreCase))
+            {
+                if (request.Schedule.ScheduleRecurrences != null && request.Schedule.ScheduleRecurrences.Count > 0)
+                {
+                    schedule.MonthlyOccurrences = GetMonthlyScheduleRecurrence(request.Schedule.ScheduleRecurrences);
+                }
+                else
+                {
+                    schedule.MonthDays = request.Schedule.MonthDays;
+                }
+            }
+            else if (request.Frequency.Equals(Constants.Schedule.Week, StringComparison.InvariantCultureIgnoreCase))
+            {
+                schedule.WeekDays = GetScheduleWeekDays(request.Schedule.WeekDays);
+            }
+
+            return schedule;
         }
 
         private List<RecurrenceScheduleOccurrence> GetMonthlyScheduleRecurrence(List<ScheduleRecurrence> occurrences)
